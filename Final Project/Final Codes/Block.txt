@@ -1,0 +1,46 @@
+Node1 account > geth --datadir "./data" account new
+Node2 account > geth --datadir "./data" account new
+
+//Genesis_File
+
+{
+  "config": {
+    "chainId": { CHAIN_ID },
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0,
+    "petersburgBlock": 0,
+    "istanbulBlock": 0,
+    "berlinBlock": 0,
+    "clique": {
+      "period": 5,
+      "epoch": 30000
+    }
+  },
+  "difficulty": "1",
+  "gasLimit": "8000000",
+  "extradata": "0x0000000000000000000000000000000000000000000000000000000000000000{ INITIAL_SIGNER_ADDRESS }0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "alloc": {
+    "{ FIRST_NODE_ADDRESS }": { "balance": "{ ETHER_AMOUNT }" },
+    "{ SECOND_NODE_ADDRESS }": { "balance": "{ EHTER_AMOUNT }" }
+  }
+}
+
+
+To create bootnode > bootnode -genkey { NAME_OF_THE_KEY }.key
+To start bootnode > bootnode -nodekey { KEY_NAME } -verbosity 7 -addr "127.0.0.1:30301"
+
+To start node1 > geth --datadir "./data"  --port 30304 --bootnodes enode://{ YOUR_VALUE } --authrpc.port 8547 --ipcdisable --allow-insecure-unlock  --http --http.corsdomain="https://remix.ethereum.org" --http.api web3,eth,debug,personal,net --networkid { NETWORK_ID } --unlock { ADDRESS_NODE1 } --password { PASSWORD_FILE_NAME_EXTENSION }  --mine --miner.etherbase= { SIGNER_ADDRESS }
+
+To start node2 > geth --datadir "./data"  --port 30306 --bootnodes enode://{ YOUR_VALUE }  -authrpc.port 8546 --networkid { NETWORK_ID } --unlock { ADDRESS_NODE2 } --password { PASSWORD_FILE_WITH_EXTENSION }
+
+
+
+Note:-
+
+1.Change bootnodes value with your bootnode value
+2.Change networkid with your own blockchain networkid
+3.Change unlock address value with your nodes address

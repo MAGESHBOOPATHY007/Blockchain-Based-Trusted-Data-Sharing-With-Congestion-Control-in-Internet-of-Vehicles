@@ -1,0 +1,558 @@
+\documentclass[notitlepage,12pt]{article}
+\usepackage{graphicx}
+\usepackage{verbatim}
+
+\author{Christopher Sasarak}
+\date{2/9/2013}
+\title{Reliability of the Kademlia DHT}
+\begin{document}
+\maketitle
+
+\section{Overview}
+\label{sec:over}
+
+This project is inspired by the Tor and Invisible Internet Project (I2P)
+anonymity protocols. These protocols seek to make internet usage anonymous by
+making encrypted networks for public use. Each of them does this a different
+way. Tor is a circuit switched network which makes use of onion
+routing\cite{tor}. I2P in contrast, is a message based system which makes use of
+garlic routing, a modified form of onion routing \cite{i2p}. In this project,
+the Kademlia algorithm, a modified form of which is used in the routing of I2P,
+is examined to see how reliable it is when nodes are leaving the system. I
+hypothesize that as the rate of nodes leaving the system increases, rate that
+the it takes for a given node to perform a look-up will increase as well.
+
+\section{Papers}
+\label{sec:papers}
+
+\subsection{Paper 1: Performance analysis of anonymous communication channels provided by Tor}
+\label{sec:Tor}
+
+In \emph{Performance analysis of anonymous communication channels
+  provided by Tor} the authors perform an experimental analysis of Tor
+in order to find out how it performs and what might be an obstacle for
+users trying to use the system \cite[p.1]{tor}. 
+
+Tor stands for \emph{The Onion Router} and is a system which provides
+anonymous internet access to users. It does this by randomly
+generating paths for packets and utilizing a technology called
+\emph{onion routing}. Onion routing is a method of communication where
+a message is encrypted for each hop on the network, and as it
+traverses each hop one layer of encryption is removed \cite[p. 1]{tor}
+
+Unfortunately, Tor is quite slow. One factor is that Tor is a network
+of comprised of volunteers who create nodes called \emph{Onion Routers} (ORs)
+along which messages can travel\cite[p. 2]{tor}. At the time that
+\cite{tor} was written the number of permanent onion routers was about
+one thousand while there were several hundred thousand users. This
+disparity between routers and users leads to significant slow-downs
+which discourage users from using the network.  The authors want to
+investigate why ways in which Tor's performance can be improved
+because the distributed nature of Tor makes the network suffer when
+there is a small number of users \cite[p. 1]{tor}. 
+
+The Tor network is comprised of a number of onion routers (at the time of
+\cite{tor}'s writing, about 1000 ORs) which maintains encrypted connections to
+other onion routers on the network. Users run an onion proxy (OP) program on their system
+which routes network packets through a randomized circuit of onion
+routers. There are some onion routers on the network which additionally act as
+\emph{directory servers} and are used by OPs to generate circuits
+\cite[p. 2]{tor}. This means that there is some centralization in the system, as
+OPs must connect to directory servers to find out where ORs are located.
+
+The authors do several tests on both the normal Tor client as well as a third
+party client called \emph{OnionCoffee}. OnionCoffee is an implementation of
+onion routing with several key differences. First, it is implemented in Java whereas
+Tor is implemented using C. Additionally, OnionCoffee includes a \emph{ranking
+  index} which ranks onion routers based on previous performance. Finally,
+OnionCoffee also uses the geographic location determined from the routers' IPs
+in order to select which routers to use for its circuits; while Tor only ranks
+routers based on bandwidth\cite[p.3]{tor}.
+
+\subsubsection{Network Tests}
+
+\label{sec:tor_tests}
+\begin{description}
+\item[Throughput Under Load] In this test the authors create a private network
+  with several ORs and many clients. One of these clients is trying to download
+  a continuous stream of data while other nodes are constantly trying to
+  establish circuits. The results were that throughput decreases until there are
+  fourteen nodes trying to establish circuits \cite[p. 4]{tor} In this test, the
+  Tor client outperformed the OnionCoffee program due to its C
+  implementation. OnionCoffee was spending most of its time doing cryptographic
+  math according to profiling performed by the researchers \cite[p. 4]{tor} 
+\item[Circuit Establishment] In this test multiple clients repeatedly establish
+  circuits of three hops each and then closes them. The researchers measured the
+  time it took to establish the circuits as the number of penetrators to the
+  network increased \cite[p. 4]{tor}. 
+\end{description}
+
+\subsubsection{Benefit to Project}
+\label{sec:benp1}
+
+The main benefit of this paper to this project is that it describes a general overview of how
+Tor works while also examining its strengths and weaknesses. The authors of
+\cite{tor} conclude that the main issue with Tor's poor performance has to do
+with path selection; that Tor should be modified in order to take into account
+more of the ORs resources than it does currently \cite[p. 7]{tor}. These
+shortcomings inspire questions as to whether there are systems that address some
+of Tor's reliability issues.
+
+\subsection{Paper 2: I2P Data Communication System}
+\label{sec:i2p}
+
+In addition to Tor, there is another network that while less mature, presents
+another way to send data anonymously over the internet, I2P. In \emph{I2P Data
+  Communcation System} the authors present a description of the \emph{Invisible
+  Internet Project} (I2P) including its benefits and drawbacks.
+
+\subsubsection{I2P Description}
+\label{sec:i2pdescr} 
+
+I2P is a distributed, message based network providing anonymous communication
+between end-users. While Tor has some centralization (routers storing the
+locations of other routers), I2P was designed to be fully distributed. I2P uses
+an augmented form of the \emph{Kademlia} distributed hash table (DHT) in order
+to find network resources located in what it calls its
+\emph{NetDB}\cite[p. 401]{i2p}. An additional difference is that rather than
+just using onion routing, I2P uses a concept called \emph{garlic routing}. In
+garlic routing, rather than encrypting a message multiple times and then pulling
+off layers as it travels through the network, multiple messages encrypted in
+this fashion are combined. The main incentive to do this is to make it harder to
+for network observers to perform traffic monitoring in order to gain more
+information about network traffic. To further enhance privacy, each node in the
+I2P system can take apart and repackage garlic cloves before forwarding them
+onto the next node in its journey \cite[p. 402]{i2p}. One further difference
+between Tor and I2P is that while Tor provides a route to the public internet,
+I2P is can only provide anonymity for communication between two users who are
+both connected to I2P \cite[p. 405]{i2p}. This is done through a series of
+plugins to the main I2P client which implement internet services such as web
+chatting and file sharing \cite[p. 406]{i2p}.
+
+\subsubsection{Network Architecture}
+\label{sec:netarch}
+
+Machines on the I2P network are broadly split into two classes, routers and
+destinations. Destinations are end-user machines such as a desktop computer
+trying to send an email via I2P. Routers provide a series of in-bound and
+out-bound \emph{tunnels} connected to destination nodes which can be used to
+send and receive messages. These tunnels are created at random and by default
+are changed every ten minutes in order to further protect users. After a sending
+node has sent the message through one of its tunnels to a routing node, the
+routing node will forward it along a random path to the destination
+\cite[p. 404]{i2p}. 
+
+\subsubsection{Benefit to Project}
+\label{sec:benp2}
+
+In this paper the authors give a profile of the I2P anonymous communication
+system. They discuss the strengths and weaknesses of it and one of the
+overarching strengths that the authors note is that the I2P network is fully
+distributed and decentralized in comparison to previous networks like Tor
+\cite[p. 407]{i2p}. The main reason for this is I2P's use of a NetDB which
+contains router as well as destination node information \cite[p. 405]{i2p}. This
+information is distributed throughout the system and accessible to anyone who
+can connect to a node already in the system. To facilitate this, the I2P
+software includes a list of nodes known to have consistent up-times and high
+bandwidth\cite[p. 405]{i2p}. 
+
+This latter part is of relevance to this project because one of the defining
+characteristics of both networks is how fault tolerant they are and how truly
+decentralized they are. Although I2P's implementation of Kademlia is modified
+\cite[p. 401]{i2p}, I2P's implementation shows an instance of real use of
+Kademlia in an anonymity network.
+
+\subsection{Paper 3: Kademlia: A Peer-to-Peer Information System Based on the XOR Metric}
+\label{sec:kadp3}
+
+\subsubsection{Benefit to Project}
+\label{sec:benp3}
+
+The main benefit of \cite{kademlia} is that it describes how the Kademlia algorithm
+is implemented on a network. Using the information in this paper, I created an
+adaptation of the Kademlia algorithm for use in a simulation. The simulation in
+turn can be used to test how well a Kademlia DHT handles node removals.
+
+\section{Software}
+\label{sec:software}
+
+The software included in the tarball with this paper is meant to simulate the
+functions of Kademlia with regards to lookup up nodes/keys in a Kademlia
+network. Most of it is written in Python and follows an object oriented
+design. Note that you will need at least Python 2.7.x to run it. There are
+several modules that make up the simulation software and three scripts which can
+be used to run it or manipulate the data produced by it. Because this is a
+simulation, there are some differences between this implementation and a
+networked one as described in \cite{kademlia}. These are described in the
+sections for the relevant modules.
+
+\subsubsection{kademliaConstants.py}
+\label{sec:kadcontsts}
+
+This file contains several constants which are used to control the
+behavior of the nodes in the simulation. They are as follows:
+
+\begin{description}
+  \item[bit\_string\_size] The size of the SHA-1 hashes (IDs) used for
+    nodes/keys in the network. In the Kademlia described in
+    \cite{kademlia} IDs are 160-bits long. However, for the purposes
+    of this simulation the SHA-1 hashes are truncated to bit-strings 64 bits long.
+  \item[k\_bucket\_size] The maximum number of nodes which can be stored
+    in any one k-bucket. As in \cite{kademlia}, the default k-bucket
+    size is twenty.
+  \item[initial\_network\_size] The initial network size used by the
+    Simulation object, see section \ref{sec:sim}. The default value is
+    one thousand, though this can be overridden by a command-line
+    argument to RunSimulation.py, see section \ref{sec:runsim}.
+  \item[failure\_probability] The probability that a node will report
+    itself as having failed when pinged. The default is .09.
+  \item[lookup\_alpha] When looking up a key, a node will make a
+    shortlist of the closest nodes that it knows of to the key it is
+    looking up. The default is three.
+  \item[maximum\_RTT\_Time] If a node is not down, this is the maximum
+    amount of time that the simulation will use for a find\_node RPC to
+    another node. The times are recorded randomly with this number as
+    an upper-bound. Since find\_node calls in a lookup\_node calls are
+    run asynchronously, the largest look-up out of the $\alpha$ list
+    is selected as the RTT for that round of look-ups.
+  \item[timeout\_time] If a node fails to respond to a
+    find\_node RPC, then this value is used as the time.
+  \item[duration\_mode] The random selections for RTTs out of
+    maximum\_RTT\_time are selected using the\texttt{ triangular() } method from the python 
+\texttt{random} 
+ module. The mode here
+    dictates where the most commonly found values will lie in the
+    random distribution from $[0,1]$. The value returned by the\texttt{random.triangular()}
+method will then be multiplied by \texttt{kademlia.maximum\_RTT\_time}.
+\end{description}
+
+\subsubsection{Node.py}
+\label{sec:node}
+
+The \texttt{node}
+ module contains the \texttt{Node}
+class which is used to represent a node in the DHT
+simulation. This node representation differs from the one described in
+\cite{kademlia} in the following ways:
+\begin{description}
+\item[K-buckets do not store (ID, UDP Port, IP) triples] Rather than store IP
+  addresses, which aren't needed for addressing in this simulation, the
+  k-buckets store 2-tuples of an ID and a Node reference.
+\item[Nodes only implement two RPCs] Nodes in the simulation implement both
+\texttt{find\_node} and
+\texttt{ping}
+ but not
+\texttt{store}
+and \texttt{find\_value}. The reason for this is that the main point of the simulation is
+  to simulate how nodes are able to look each other up as nodes fail. For such a
+  simulation, finding and storing values in nodes only serves the purpose of
+  updating the routing table when the RPC is made. This can be achieved just as
+  easily using the \texttt{find\_node}and \texttt{ping}
+ RPCs. 
+\end{description}
+A node also generates and keeps a running total of the RTT times that it
+generates randomly when looking up keys with its \texttt{perform\_node\_lookup}
+method. 
+
+The \texttt{node}
+ module also includes the \texttt{KBucket}
+class. This class is used for managing a list of doubles that a
+node has encountered. Each \texttt{Node}
+ contains one \texttt{KBucket}
+for every bit in the ID bit-strings (\texttt{.bit\_string\_size}). The a
+\texttt{KBucket}
+is responsible for determining if a given key would be stored in
+itself and also implements the algorithm described in \cite[p. 5]{kademlia} for
+adding nodes to itself. 
+
+\subsubsection{simulation.py}
+\label{sec:sim}
+This module contains the \texttt{Simulation}
+class which when instantiated with the random seed and initial network
+size holds all the information needed to run
+a simulation. It populates a network with
+\texttt{init\_size} or \texttt{.initial\_network\_size} nodes using a \texttt{Node}'s
+\texttt{join\_network}
+method. It assigns each node a random hash as determined by
+\texttt{.bit\_string\_size}. A
+\texttt{Simulation}
+ object can also perform a node look-up in the network. It does
+this by first selecting a random node, and then generating a random key and
+running the
+\texttt{node\_lookup}
+method on the chosen node with the given key. 
+\texttt{Simulation}
+can also disable
+\texttt{n}
+ nodes at random with its
+\texttt{disable\_nodes}
+method.
+\subsubsection{RunSimulation.py}
+\label{sec:runsim}
+RunSimulation.py is a script that will build a network and then iteratively run
+a number of randomized look-ups (see \texttt{Simulation.perform\_node\_lookup})
+printing the average RTT to stdout after it finishes each iteration (trial). One
+important thing to note is that before actual tests are run, the script will
+perform a number of random look-ups equal to half of the size of the
+network. This is because in a new network the nodes will learn about other nodes
+in the system more rapidly than in an established network. Training the nodes at
+the beginning prevents this from affecting the data produced when nodes are
+being removed.
+
+After each round of look-ups RunSimulation.py will disable some nodes at
+random and repeat. It also saves the number and average look-up time for each
+trial in a space-separated external file for use later.
+
+RunSimulation.py requires at least 2.7.x. Also remember to give it execute
+privileges. Instead of needing execute privileges, it can also be invoked with:
+\begin{verbatim}
+python RunSimulation.py ...
+\end{verbatim}
+
+The usage for the RunSimulation.py script is as follows:
+
+\begin{verbatim}
+./RunSimulation.py <random seed> <network size> \
+  <trials> <disable count> [<data output file>]
+\end{verbatim}
+
+\begin{description}
+\item[random seed] The random seed that this simulation will use to build and
+  run the network.
+\item[network size] The number of nodes to populate the network with to start.
+\item[trials] The number of trials to run.
+\item[disable count] The number of nodes to disable at random after each trial.
+\item[data output file] Optional filename to use when writing data. Defaults to
+  `data.out' if none is provided. RunSimulation.py outputs two columns of data,
+  the trial number and the average RTT.
+\end{description}
+
+\subsubsection{run-tests.sh}
+\label{sec:runtests}
+This is a \emph{sh} script which will run a battery of tests using
+RunSimulation.py. For each test, it uses RunSimulation.py to build and train a
+fresh network using the same random seed. It gradually increases the rate
+at which nodes are being removed between each of its ranges for each run of RunSimulation.py. 
+Its usage is as follows:
+
+\begin{verbatim}
+./run_tests.sh <seed> <network size> <trials per experiment> \
+  <node disable start bound> <node disable upper bound> \
+  <node disable increment>
+\end{verbatim}
+
+\begin{description}
+\item[network size] The number of nodes in the network to pass to each run of RunSimulation.py
+\item[trials per experiment] The number of trials to run for each experiment
+\item[node disable start bound] The smallest number of nodes to disable after
+  each trial for a run of RunSimulation.py
+\item[node disable upper bound] The largest number of nodes to disable after
+  each trial for a run of RunSimulation.py
+\item[disable increment] The number to increment the number of nodes removed
+  during each trial. Essentially how much to add to ``node disable start bound''
+  before each experiment.
+\end{description}
+By default, run\_tests.sh will instruct RunSimulation.py to output data into
+files of the form \texttt{<nodes disabled per trial>\_increase.dat}.
+
+
+\subsubsection{plots.gnuplot}
+\label{sec:plots}
+This file is a script that can be loaded into gnuplot which will generate graphs
+from data output by run\_tests.sh. It requires gnuplot version 4.6 or higher. To
+use it, run it at the prompt as follows:
+\begin{verbatim}
+$ gnuplot
+gnuplot> load `plots.gnuplots'
+\end{verbatim}
+The parameters used to create the plots can be altered by editing the following
+variables in plots.gnuplot:
+\begin{description}
+  \item[graph\_lower\_bound] The lowest number of nodes that would be removed
+    per trial in run\_tests.sh. Corresponds to ``Node disable start bound" in run\_tests.sh.
+  \item[graph\_upper\_bound] The highest number of nodes that would be removed
+    per trial in run\_tests.sh. Corresponds to ``Node disable upper bound" in run\_tests.sh.
+  \item[graph\_increment] The number that was added for each experiment in
+    run\_tests.sh. Corresponds to ``disable increment" in run\_tests.sh.
+  \item[output\_type] The file output type to write the graphs to. This can be
+    any file format supported by you copy of gnuplot. Default is eps.
+  \item[file\_suffix] The part of the filenames produced by run\_tests.sh after
+    the disable number. Default is `\texttt{\_increase.dat}'.
+  \item[image\_size] The size of the images produced by gnuplot, the default is 1024x768.
+\end{description}
+
+Plots are output to \texttt{combined.<extension>} which includes both points and
+linear fit lines, \texttt{linear.<extension>} which only shows linear fit lines,
+and \texttt{slopes.<extension>}
+which is a plot of the slopes of the lines in the former two plots.
+
+\subsection{Instructions to Repeat Experiments from this Report}
+\label{sec:repeatinstr}
+In order to repeat the experiments run for this report and produce the same
+plots, run the following sequence of commands:
+\begin{verbatim}
+$ ./run_tests.sh 42 10000 100 0 50 5
+$ gnuplot
+gnuplot> load 'plots.gnuplot'
+gnuplot> ^D
+\end{verbatim}
+Where
+\texttt{\$}
+is your shell prompt and
+\texttt{gnuplot>}
+ is the prompt provided by gnuplot when started. Be sure that both
+run\_tests.sh and RunSimulation.py are executable before using this command sequence.
+
+\section{Experimental Results and Conclusion}
+\label{sec:expres}
+
+In order to verify if the hypothesis was correct or not, ten tests were run. In
+each test RunSimulation.py generated a random network of ten-thousand nodes,
+with each node joining the network following the procedure described in
+\cite{kademlia}. The network was then trained by doing five-thousand random
+lookups so that nodes learning in early iterations would not affect trends as
+much as nodes were removed. This was not strictly necessary, as a comparison of
+the data in \texttt{0\_increase.dat} and \texttt{0\_increase\_no\_train.dat} shows.
+In each test, there were one-hundred trials consisting of
+one-thousand random lookups. After each trial, some nodes were removed at random
+before doing the next. After each test, the network was regenerated using the
+same random seed and the number of nodes to remove after each trial was
+increased by five. RunSimulation.py was run a total of ten times, meaning that
+at minimum zero nodes were removed from the network after each trial (as a
+control group) and at maximum fifty nodes were removed from the network after
+each trial. The data from these experiments are included in raw form in Section \ref{sec:data}
+
+Figure \ref{fig:points} shows a plot of the average RTT for a lookup versus the
+trial number. Each color/shape represents a different number of nodes being
+randomly disabled per trial. Notice that the control group, where no nodes were
+removed between trials, shows a downward trend as the nodes in the network
+learned about each other. All other node reductions show an increasing average
+RTT over the course of the test. Linear fits are included in Figure
+\ref{fig:combined} and shown alone in Figure \ref{fig:linear} in order to make this
+more apparent. This indicates that the hypothesis correlating average RTT's rate
+with the node removal rate is most likely true. To further illustrate this
+point, Figure \ref{fig:slopes} shows a plot of the slopes from Figures
+\ref{fig:combined} and \ref{fig:linear}: change in node removal rate versus
+change in average RTT time.
+
+In the future, it would be interesting to test how RTT changes as nodes leave in
+a real implementation of Kademlia. While this particular simulation is useful
+for determining trends, it is not terribly useful for determining real values
+given that numbers such as the randomized RTT times for \texttt{find\_node}
+operations, are contrived. By experimenting on a real system, we could get more
+concrete values about how Kademlia behaves under a certain set of conditions. 
+
+An additional experiment would be to see how nodes joining the system affect
+Kademlia's performance. With some modifications, such as adding methods to
+randomly add nodes to the network, the code included with this distribution
+could be used for that purpose. 
+
+\begin{figure}[htdp]
+  \centering
+  \caption{}
+  \includegraphics[width=\textwidth]{points}
+  \label{fig:points}
+\end{figure}
+
+\begin{figure}[htdp]
+  \centering
+  \caption{}
+  \includegraphics[width=\textwidth]{combined}
+  \label{fig:combined}
+\end{figure}
+
+\begin{figure}[htdp]
+  \centering
+  \caption{}
+  \includegraphics[width=\textwidth]{linear}
+  \label{fig:linear}
+\end{figure}
+
+\begin{figure}[htdp]
+  \centering
+  \caption{}
+  \includegraphics[width=\textwidth]{slopes}
+  \label{fig:slopes}
+\end{figure}
+
+\section{Project Debriefing}
+\label{sec:debrief}
+
+In doing this project, I learned a lot about DHTs. In particular, I learned some
+of the challenges that other DHTs have that Kademlia removes, such as asymmetric
+key lookup time, and in reading \cite{i2p} and \cite{kademlia} the advantages
+that DHTs have over centralized information storage in general. Simulating
+\cite{kademlia} in particular helped me to understand them better than
+\cite{chord}. Although the Chord network can be simpler than Kademlia, I found
+the description of Kademlia's k-buckets in \cite{kademlia} far more readable than
+the description of Chord's finger table in \cite{chord}. 
+
+I also learned a lot about the benefits of writing simulations. Being able to
+apply writing a simulation like I saw in the class lectures edified my knowledge
+of simulations and increased the likelihood that I would write one as a tool in
+the future. 
+
+\section{Data}
+\label{sec:data}
+
+\subsection{0\_increase.dat}
+\label{sec:0inc}
+
+\verbatiminput{0_increase.dat}
+
+\subsection{5\_increase.dat}
+\label{sec:5inc}
+
+\verbatiminput{5_increase.dat}
+
+\subsection{10\_increase.dat}
+\label{sec:10inc}
+
+\verbatiminput{15_increase.dat}
+
+\subsection{20\_increase.dat}
+\label{sec:20inc}
+
+\verbatiminput{20_increase.dat}
+
+\subsection{25\_increase.dat}
+\label{sec:25inc}
+
+\verbatiminput{25_increase.dat}
+
+\subsection{30\_increase.dat}
+\label{sec:30inc}
+
+\verbatiminput{30_increase.dat}
+
+\subsection{35\_increase.dat}
+\label{sec:35inc}
+
+\verbatiminput{35_increase.dat}
+
+\subsection{40\_increase.dat}
+\label{sec:40inc}
+
+\verbatiminput{40_increase.dat}
+
+\subsection{45\_increase.dat}
+\label{sec:45inc}
+
+\verbatiminput{45_increase.dat}
+
+\subsection{50\_increase.dat}
+\label{sec:50inc}
+
+\verbatiminput{50_increase.dat}
+
+\subsection{slopes.dat}
+\label{sec:slopes}
+
+\verbatiminput{slopes.dat}
+
+
+\bibliographystyle{plain}
+\bibliography{citations}
+\end{document}
+
+
